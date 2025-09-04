@@ -1,0 +1,17 @@
+[Unit]
+Description=MCP Knowledge Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=ubuntu
+ExecStart=/usr/bin/node /opt/mcp-knowledge-service/dist/server.js
+WorkingDirectory=/opt/mcp-knowledge-service
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/mcp-knowledge-service/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -55,17 +55,62 @@ jobs:
     - name: Build project
       run: npm run build
     
-    - name: Create deployment artifact
+    - name: Create deployment package
       run: |
-        tar -czf deployment.tar.gz \
+        mkdir -p deploy
+        tar -czf deploy/mcp-knowledge-service.tar.gz \
           dist/ \
           package.json \
           package-lock.json \
-          .env.example
+          .env.example \
+          scripts/
     
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
+    - name: Setup SSH key
+      uses: webfactory/ssh-agent@v0.7.0
       with:
-        name: deployment-artifact
-        path: deployment.tar.gz
-        retention-days: 30
+        ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+    
+    - name: Add Tailscale host to known_hosts
+      run: |
+        ssh-keyscan -H mcp-trail-mcp >> ~/.ssh/known_hosts
+    
+    - name: Deploy to trail container
+      run: |
+        # Copy deployment package
+        scp deploy/mcp-knowledge-service.tar.gz ubuntu@mcp-trail-mcp:/tmp/
+        
+        # Deploy via SSH
+        ssh ubuntu@mcp-trail-mcp << 'EOF'
+          set -e
+          
+          # Stop existing service if running
+          sudo systemctl stop mcp-knowledge-service || true
+          
+          # Backup current deployment
+          sudo mv /opt/mcp-knowledge-service /opt/mcp-knowledge-service.backup.$(date +%Y%m%d-%H%M%S) || true
+          
+          # Create deployment directory
+          sudo mkdir -p /opt/mcp-knowledge-service
+          
+          # Extract new deployment
+          cd /opt/mcp-knowledge-service
+          sudo tar -xzf /tmp/mcp-knowledge-service.tar.gz
+          
+          # Install dependencies (production only)
+          sudo npm ci --only=production
+          
+          # Set ownership
+          sudo chown -R ubuntu:ubuntu /opt/mcp-knowledge-service
+          
+          # Start service
+          sudo systemctl start mcp-knowledge-service
+          sudo systemctl enable mcp-knowledge-service
+          
+          # Cleanup
+          rm /tmp/mcp-knowledge-service.tar.gz
+        EOF
+    
+    - name: Verify deployment
+      run: |
+        sleep 10
+        ssh ubuntu@mcp-trail-mcp "sudo systemctl status mcp-knowledge-service"
