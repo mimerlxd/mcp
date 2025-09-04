@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 jobs:
   test:
@@ -38,7 +38,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     
     steps:
     - uses: actions/checkout@v4
@@ -72,15 +72,15 @@ jobs:
     
     - name: Add Tailscale host to known_hosts
       run: |
-        ssh-keyscan -H mcp-trail-mcp >> ~/.ssh/known_hosts
+        ssh-keyscan -H mcp-trail-mcp.tail2d448.ts.net >> ~/.ssh/known_hosts
     
     - name: Deploy to trail container
       run: |
         # Copy deployment package
-        scp deploy/mcp-knowledge-service.tar.gz ubuntu@mcp-trail-mcp:/tmp/
+        scp deploy/mcp-knowledge-service.tar.gz ubuntu@mcp-trail-mcp.tail2d448.ts.net:/tmp/
         
         # Deploy via SSH
-        ssh ubuntu@mcp-trail-mcp << 'EOF'
+        ssh ubuntu@mcp-trail-mcp.tail2d448.ts.net << 'EOF'
           set -e
           
           # Stop existing service if running
@@ -113,4 +113,4 @@ jobs:
     - name: Verify deployment
       run: |
         sleep 10
-        ssh ubuntu@mcp-trail-mcp "sudo systemctl status mcp-knowledge-service"
+        ssh ubuntu@mcp-trail-mcp.tail2d448.ts.net "sudo systemctl status mcp-knowledge-service"

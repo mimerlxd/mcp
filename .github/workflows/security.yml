@@ -4,9 +4,9 @@ on:
   schedule:
     - cron: '0 0 * * 1' # Weekly on Mondays
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   security-audit:
